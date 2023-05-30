@@ -24,12 +24,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    
+    - name: Patch Versions
+      uses: justalemon/VersionPatcher@master
+      with:
+        version: ${{ inputs.version }}
+        csproj-files: "*/*.csproj"
 
     - name: restore x64
       run: dotnet restore OpenUtau -r ${{ matrix.os.arch }}
 
     - name: build x64
-      run: dotnet publish OpenUtau -c Release -r ${{ matrix.os.arch }} --self-contained true -o bin/${{ matrix.os.arch }} /p:version=${{ inputs.version }}
+      run: dotnet publish OpenUtau -c Release -r ${{ matrix.os.arch }} --self-contained true -o bin/${{ matrix.os.arch }}
 
     - name: add openutau.plugins.builtin (windows)
       if: ${{ matrix.os.arch == 'win-x64' }}

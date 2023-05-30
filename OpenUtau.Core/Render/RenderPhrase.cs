@@ -50,13 +50,15 @@ namespace OpenUtau.Core.Render {
         public readonly int tone;
         public readonly int noteIndex;
         public readonly double tempo;
+        public readonly UTempo[] tempos;
 
         // classic args
         public readonly double preutterMs;
         public readonly double overlapMs;
         public readonly double durCorrectionMs;
         public readonly string resampler;
-        public readonly Tuple<string, int?>[] flags;
+        public readonly double adjustedTempo;
+        public readonly Tuple<string, int?, string>[] flags;// flag, value, abbr. Abbr is kept here for flag filtering.
         public readonly string suffix;
         public readonly float volume;
         public readonly float velocity;
@@ -78,10 +80,24 @@ namespace OpenUtau.Core.Render {
 
             this.phoneme = phoneme.phoneme;
             tone = note.tone;
-            tempo = project.timeAxis.GetBpmAtTick(part.position + phoneme.position);
+            tempos = project.timeAxis.TemposBetweenTicks(part.position + phoneme.position - leading, part.position + phoneme.End);
+            UTempo[] noteTempos = project.timeAxis.TemposBetweenTicks(part.position + phoneme.position, part.position + phoneme.End);
+            tempo = noteTempos[0].bpm;
+
+            double actualTickDuration = 0;
+            for (int i = 0; i < noteTempos.Length; i++) {
+                int tempoStart = Math.Max(part.position + phoneme.position, noteTempos[i].position);
+                int tempoEnd = i + 1 < noteTempos.Length ? noteTempos[i + 1].position : part.position + phoneme.End;
+                int tempoLength = tempoEnd - tempoStart;
+                actualTickDuration += (double)(tempoLength * (tempo / noteTempos[i].bpm));
+            }
+
+            adjustedTempo = duration / actualTickDuration * tempo;
+
             preutterMs = phoneme.preutter;
             overlapMs = phoneme.overlap;
             durCorrectionMs = phoneme.preutter - phoneme.tailIntrude + phoneme.tailOverlap;
+
 
             resampler = track.RendererSettings.resampler;
             int eng = (int)phoneme.GetExpression(project, track, Format.Ustx.ENG).Item1;
@@ -103,10 +119,10 @@ namespace OpenUtau.Core.Render {
             oto = phoneme.oto;
             hash = Hash();
         }
-
         private ulong Hash() {
             using (var stream = new MemoryStream()) {
                 using (var writer = new BinaryWriter(stream)) {
+                    writer.Write(adjustedTempo);
                     writer.Write(duration);
                     writer.Write(phoneme ?? string.Empty);
                     writer.Write(tone);

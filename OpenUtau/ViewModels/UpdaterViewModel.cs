@@ -36,8 +36,8 @@ namespace OpenUtau.App.ViewModels {
         }
 
         private static readonly string[] domains = new[] {
-            "https://github.com",
-            "https://hub.fastgit.xyz",
+            "https://bing.com",
+            "https://bing.com",
         };
 
         public static async Task<SparkleUpdater> NewUpdaterAsync() {

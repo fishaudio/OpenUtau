@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reactive;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -31,6 +32,8 @@ namespace OpenUtau.App.Views {
             OS.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
         private readonly MainWindowViewModel viewModel;
 
+        private bool splashDone = false;
+
         private PianoRollWindow? pianoRollWindow;
         private bool openPianoRollWindow;
 
@@ -55,11 +58,22 @@ namespace OpenUtau.App.Views {
 #if DEBUG
             this.AttachDevTools();
 #endif
-            viewModel.InitProject();
-            viewModel.AddTempoChangeCmd = ReactiveCommand.Create<int>(tick => AddTempoChange(tick));
-            viewModel.DelTempoChangeCmd = ReactiveCommand.Create<int>(tick => DelTempoChange(tick));
-            viewModel.AddTimeSigChangeCmd = ReactiveCommand.Create<int>(bar => AddTimeSigChange(bar));
-            viewModel.DelTimeSigChangeCmd = ReactiveCommand.Create<int>(bar => DelTimeSigChange(bar));
+            var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+            viewModel.GetInitSingerTask()!.ContinueWith(_ => {
+                viewModel.InitProject();
+                viewModel.AddTempoChangeCmd = ReactiveCommand.Create<int>(tick => AddTempoChange(tick));
+                viewModel.DelTempoChangeCmd = ReactiveCommand.Create<int>(tick => DelTempoChange(tick));
+                viewModel.AddTimeSigChangeCmd = ReactiveCommand.Create<int>(bar => AddTimeSigChange(bar));
+                viewModel.DelTimeSigChangeCmd = ReactiveCommand.Create<int>(bar => DelTimeSigChange(bar));
+
+                var splash = this.Find<Border>("Splash");
+                splash.IsEnabled = false;
+                splash.IsVisible = false;
+                var mainGrid = this.Find<Grid>("MainGrid");
+                mainGrid.IsEnabled = true;
+                mainGrid.IsVisible = true;
+                splashDone = true;
+            }, CancellationToken.None, TaskContinuationOptions.None, scheduler);
 
             timer = new DispatcherTimer(
                 TimeSpan.FromMilliseconds(15),
@@ -311,7 +325,7 @@ namespace OpenUtau.App.Views {
             }
         }
 
-        async void OnMenuImportMidi(bool UseDrywetmidi=false) {
+        async void OnMenuImportMidi(bool UseDrywetmidi = false) {
             var dialog = new OpenFileDialog() {
                 Filters = new List<FileDialogFilter>() {
                     new FileDialogFilter() {
@@ -384,24 +398,6 @@ namespace OpenUtau.App.Views {
             }
         }
 
-        async void OnMenuExportDs(object sender, RoutedEventArgs e) {
-            var project = DocManager.Inst.Project;
-            if (await WarnToSave(project)) {
-                var name = System.IO.Path.GetFileNameWithoutExtension(project.FilePath);
-                var path = System.IO.Path.GetDirectoryName(project.FilePath);
-                path = System.IO.Path.Combine(path!, "Export");
-                path = System.IO.Path.Combine(path!, $"{name}.ds");
-                for (var i = 0; i < project.parts.Count; i++) {
-                    var part = project.parts[i];
-                    if (part is UVoicePart voicePart) {
-                        var savePath = PathManager.Inst.GetPartSavePath(path, i)[..^4] + ".ds";
-                        DiffSingerScript.SavePart(project, voicePart, savePath);
-                        DocManager.Inst.ExecuteCmd(new ProgressBarNotification(0, $"{savePath}."));
-                    }
-                }
-            }
-        }
-
         async void OnMenuExportDsTo(object sender, RoutedEventArgs e) {
             var project = DocManager.Inst.Project;
             var dialog = new SaveFileDialog() {
@@ -419,6 +415,52 @@ namespace OpenUtau.App.Views {
                     if (part is UVoicePart voicePart) {
                         var savePath =  PathManager.Inst.GetPartSavePath(file, i)[..^4]+".ds";
                         DiffSingerScript.SavePart(project, voicePart, savePath);
+                        DocManager.Inst.ExecuteCmd(new ProgressBarNotification(0, $"{savePath}."));
+                    }
+                }
+            }
+        }
+
+        async void OnMenuExportDsV2To(object sender, RoutedEventArgs e) {
+            var project = DocManager.Inst.Project;
+            var dialog = new SaveFileDialog() {
+                DefaultExtension = "ds",
+                Filters = new List<FileDialogFilter>() {
+                    new FileDialogFilter() {
+                        Extensions = new List<string>(){ "ds" },
+                    },
+                },
+            };
+            var file = await dialog.ShowAsync(this);
+            if (!string.IsNullOrEmpty(file)) {
+                for (var i = 0; i < project.parts.Count; i++) {
+                    var part = project.parts[i];
+                    if (part is UVoicePart voicePart) {
+                        var savePath =  PathManager.Inst.GetPartSavePath(file, i)[..^4]+".ds";
+                        DiffSingerScript.SavePart(project, voicePart, savePath, true);
+                        DocManager.Inst.ExecuteCmd(new ProgressBarNotification(0, $"{savePath}."));
+                    }
+                }
+            }
+        }
+
+        async void OnMenuExportDsV2WithoutPitchTo(object sender, RoutedEventArgs e) {
+            var project = DocManager.Inst.Project;
+            var dialog = new SaveFileDialog() {
+                DefaultExtension = "ds",
+                Filters = new List<FileDialogFilter>() {
+                    new FileDialogFilter() {
+                        Extensions = new List<string>(){ "ds" },
+                    },
+                },
+            };
+            var file = await dialog.ShowAsync(this);
+            if (!string.IsNullOrEmpty(file)) {
+                for (var i = 0; i < project.parts.Count; i++) {
+                    var part = project.parts[i];
+                    if (part is UVoicePart voicePart) {
+                        var savePath =  PathManager.Inst.GetPartSavePath(file, i)[..^4]+".ds";
+                        DiffSingerScript.SavePart(project, voicePart, savePath, true, false);
                         DocManager.Inst.ExecuteCmd(new ProgressBarNotification(0, $"{savePath}."));
                     }
                 }
@@ -662,6 +704,9 @@ namespace OpenUtau.App.Views {
         }
 
         void OnKeyDown(object sender, KeyEventArgs args) {
+            if (!splashDone) {
+                return;
+            }
             var tracksVm = viewModel.TracksViewModel;
             if (args.KeyModifiers == KeyModifiers.None) {
                 args.Handled = true;

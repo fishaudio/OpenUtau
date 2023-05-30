@@ -82,8 +82,9 @@
   <system:String x:Key="menu.file">文件</system:String>
   <system:String x:Key="menu.file.exit">退出</system:String>
   <system:String x:Key="menu.file.exportaudio">导出音频</system:String>
-  <system:String x:Key="menu.file.exportds">导出DiffSinger脚本</system:String>
-  <system:String x:Key="menu.file.exportdsto">导出DiffSinger脚本至...</system:String>
+  <system:String x:Key="menu.file.exportds">导出DiffSinger脚本至</system:String>
+  <system:String x:Key="menu.file.exportds.v2">导出DiffSinger脚本至（v2）</system:String>
+  <system:String x:Key="menu.file.exportds.v2withoutpitch">导出DiffSinger脚本至（v2，不包含音高曲线）</system:String>
   <system:String x:Key="menu.file.exportmidi">导出Midi文件</system:String>
   <system:String x:Key="menu.file.exportmixdown">混缩为Wav文件</system:String>
   <system:String x:Key="menu.file.exportproject">导出工程</system:String>
@@ -186,6 +187,7 @@
   <system:String x:Key="pianoroll.menu.notes">音符</system:String>
   <system:String x:Key="pianoroll.menu.notes.addtaildash">添加尾部"-"音符</system:String>
   <system:String x:Key="pianoroll.menu.notes.addtailrest">添加尾部"R"音符</system:String>
+  <system:String x:Key="pianoroll.menu.notes.bakepitch">将手绘音高转换为锚点音高</system:String>
   <system:String x:Key="pianoroll.menu.notes.clear.vibratos">清除颤音</system:String>
   <system:String x:Key="pianoroll.menu.notes.hanzitopinyin">汉字转拼音</system:String>
   <system:String x:Key="pianoroll.menu.notes.loadrenderedpitch">加载音高渲染结果</system:String>
@@ -286,6 +288,7 @@
 
   <system:String x:Key="progress.saved">工程已保存 {0}</system:String>
   <system:String x:Key="progress.waitingrendering">等待渲染</system:String>
+  <system:String x:Key="progress.loadingsingers">正在加载歌手...</system:String>
 
   <system:String x:Key="singers.caption">歌手</system:String>
   <!--<system:String x:Key="singers.editoto.editinvlabeler">Edit In vLabeler</system:String>-->
